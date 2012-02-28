@@ -320,6 +320,8 @@ struct _cairo_gl_context {
     cairo_bool_t has_map_buffer;
     cairo_bool_t has_packed_depth_stencil;
 
+    cairo_bool_t thread_aware;
+
     void (*acquire) (void *ctx);
     void (*release) (void *ctx);
 
