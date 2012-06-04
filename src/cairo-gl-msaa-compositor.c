@@ -696,10 +696,28 @@ _cairo_gl_msaa_compositor_stroke (const cairo_compositor_t	*compositor,
     if (unlikely (status))
 	goto finish;
 
+
     status = _prevent_overlapping_strokes (info.ctx, &info.setup,
 					   composite, path, style, ctm);
     if (unlikely (status))
 	goto finish;
+
+    if (_cairo_gl_hairline_style_is_hairline (style, ctm)) {
+	cairo_gl_hairline_closure_t closure;
+	closure.ctx = info.ctx;
+	closure.tolerance = tolerance;
+
+	status = _cairo_gl_path_fixed_stroke_to_hairline (path, &closure,
+							  style, ctm,
+							  ctm_inverse,
+							  _cairo_gl_hairline_move_to,
+							  style->dash ?
+							  _cairo_gl_hairline_line_to_dashed :
+							  _cairo_gl_hairline_line_to,
+							  _cairo_gl_hairline_curve_to,
+							  _cairo_gl_hairline_close_path);
+	goto finish;
+    }
 
     status = _cairo_path_fixed_stroke_to_shaper ((cairo_path_fixed_t *) path,
 						 style,
