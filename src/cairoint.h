@@ -1094,22 +1094,6 @@ _cairo_path_fixed_stroke_polygon_to_traps (const cairo_path_fixed_t	*path,
 					   double		 tolerance,
 					   cairo_traps_t	*traps);
 
-cairo_private cairo_status_t
-_cairo_path_fixed_stroke_to_shaper (cairo_path_fixed_t	*path,
-				   const cairo_stroke_style_t	*stroke_style,
-				   const cairo_matrix_t	*ctm,
-				   const cairo_matrix_t	*ctm_inverse,
-				   double		 tolerance,
-				   cairo_status_t (*add_triangle) (void *closure,
-								   const cairo_point_t triangle[3]),
-				   cairo_status_t (*add_triangle_fan) (void *closure,
-								       const cairo_point_t *midpt,
-								       const cairo_point_t *points,
-								       int npoints),
-				   cairo_status_t (*add_quad) (void *closure,
-							       const cairo_point_t quad[4]),
-				   void *closure);
-
 /* cairo-scaled-font.c */
 
 cairo_private void

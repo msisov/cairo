@@ -46,6 +46,7 @@
 #include "cairo-slope-private.h"
 #include "cairo-stroke-dash-private.h"
 #include "cairo-traps-private.h"
+#include "cairo-path-stroke-private.h"
 
 typedef struct cairo_stroker {
     cairo_stroke_style_t style;
@@ -712,52 +713,6 @@ _cairo_stroker_add_trailing_cap (cairo_stroker_t     *stroker,
 				 const cairo_stroke_face_t *face)
 {
     return _cairo_stroker_add_cap (stroker, face);
-}
-
-static inline cairo_bool_t
-_compute_normalized_device_slope (double *dx, double *dy,
-				  const cairo_matrix_t *ctm_inverse,
-				  double *mag_out)
-{
-    double dx0 = *dx, dy0 = *dy;
-    double mag;
-
-    cairo_matrix_transform_distance (ctm_inverse, &dx0, &dy0);
-
-    if (dx0 == 0.0 && dy0 == 0.0) {
-	if (mag_out)
-	    *mag_out = 0.0;
-	return FALSE;
-    }
-
-    if (dx0 == 0.0) {
-	*dx = 0.0;
-	if (dy0 > 0.0) {
-	    mag = dy0;
-	    *dy = 1.0;
-	} else {
-	    mag = -dy0;
-	    *dy = -1.0;
-	}
-    } else if (dy0 == 0.0) {
-	*dy = 0.0;
-	if (dx0 > 0.0) {
-	    mag = dx0;
-	    *dx = 1.0;
-	} else {
-	    mag = -dx0;
-	    *dx = -1.0;
-	}
-    } else {
-	mag = hypot (dx0, dy0);
-	*dx = dx0 / mag;
-	*dy = dy0 / mag;
-    }
-
-    if (mag_out)
-	*mag_out = mag;
-
-    return TRUE;
 }
 
 static void

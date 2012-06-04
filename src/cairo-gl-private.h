@@ -57,6 +57,7 @@
 #include "cairo-scaled-font-private.h"
 #include "cairo-spans-compositor-private.h"
 #include "cairo-array-private.h"
+#include "cairo-stroke-dash-private.h"
 
 #include <assert.h>
 
@@ -219,7 +220,8 @@ typedef enum cairo_gl_var_type {
 
 typedef enum cairo_gl_primitive_type {
     CAIRO_GL_PRIMITIVE_TYPE_TRIANGLES,
-    CAIRO_GL_PRIMITIVE_TYPE_TRISTRIPS
+    CAIRO_GL_PRIMITIVE_TYPE_TRISTRIPS,
+    CAIRO_GL_PRIMITIVE_TYPE_LINES,
 } cairo_gl_primitive_type_t;
 
 typedef void (*cairo_gl_emit_rect_t) (cairo_gl_context_t *ctx,
@@ -597,6 +599,11 @@ _cairo_gl_composite_emit_triangle_as_tristrip (cairo_gl_context_t	*ctx,
 					       cairo_gl_composite_t	*setup,
 					       const cairo_point_t	 triangle[3]);
 
+cairo_private cairo_int_status_t
+_cairo_gl_composite_emit_segment (cairo_gl_context_t  *ctx,
+				  const cairo_point_t *p1,
+				  const cairo_point_t *p2);
+
 cairo_private void
 _cairo_gl_context_destroy_operand (cairo_gl_context_t *ctx,
                                    cairo_gl_tex_t tex_unit);
@@ -829,7 +836,6 @@ _cairo_gl_glyph_cache_unlock (cairo_gl_glyph_cache_t *cache)
 {
     _cairo_rtree_unpin (&cache->rtree);
 }
-
 
 slim_hidden_proto (cairo_gl_surface_create);
 slim_hidden_proto (cairo_gl_surface_create_for_texture);

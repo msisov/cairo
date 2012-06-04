@@ -764,23 +764,29 @@ FAIL:
 }
 
 static inline void
-_cairo_gl_composite_draw_tristrip (cairo_gl_context_t *ctx)
+_cairo_gl_composite_draw_indices_array (cairo_gl_context_t *ctx)
 {
+    GLenum primitive_type;
     cairo_array_t* indices = &ctx->tristrip_indices;
     const unsigned short *indices_array = _cairo_array_index_const (indices, 0);
+
+    primitive_type = ctx->primitive_type == CAIRO_GL_PRIMITIVE_TYPE_LINES ?
+	GL_LINES : GL_TRIANGLE_STRIP;
 
     if (ctx->pre_shader) {
 	cairo_gl_shader_t *prev_shader = ctx->current_shader;
 
 	_cairo_gl_set_shader (ctx, ctx->pre_shader);
 	_cairo_gl_set_operator (ctx, CAIRO_OPERATOR_DEST_OUT, TRUE);
-	glDrawElements (GL_TRIANGLE_STRIP, _cairo_array_num_elements (indices), GL_UNSIGNED_SHORT, indices_array);
+	glDrawElements (primitive_type, _cairo_array_num_elements (indices),
+		        GL_UNSIGNED_SHORT, indices_array);
 
 	_cairo_gl_set_shader (ctx, prev_shader);
 	_cairo_gl_set_operator (ctx, CAIRO_OPERATOR_ADD, TRUE);
     }
 
-    glDrawElements (GL_TRIANGLE_STRIP, _cairo_array_num_elements (indices), GL_UNSIGNED_SHORT, indices_array);
+    glDrawElements (primitive_type, _cairo_array_num_elements (indices),
+		    GL_UNSIGNED_SHORT, indices_array);
     _cairo_array_truncate (indices, 0);
 }
 
@@ -843,11 +849,12 @@ _cairo_gl_composite_flush (cairo_gl_context_t *ctx)
     count = ctx->vb_offset / ctx->vertex_size;
     _cairo_gl_composite_unmap_vertex_buffer (ctx);
 
-    if (ctx->primitive_type == CAIRO_GL_PRIMITIVE_TYPE_TRISTRIPS) {
-	_cairo_gl_composite_draw_tristrip (ctx);
-    } else {
-	assert (ctx->primitive_type == CAIRO_GL_PRIMITIVE_TYPE_TRIANGLES);
+    if (ctx->primitive_type == CAIRO_GL_PRIMITIVE_TYPE_TRIANGLES) {
 	_cairo_gl_composite_draw_triangles_with_clip_region (ctx, count);
+    } else {
+	assert (ctx->primitive_type == CAIRO_GL_PRIMITIVE_TYPE_LINES ||
+		ctx->primitive_type == CAIRO_GL_PRIMITIVE_TYPE_TRISTRIPS);
+	_cairo_gl_composite_draw_indices_array (ctx);
     }
 
     for (i = 0; i < ARRAY_LENGTH (&ctx->glyph_cache); i++)
@@ -1180,8 +1187,8 @@ _cairo_gl_composite_init (cairo_gl_composite_t *setup,
 }
 
 static cairo_int_status_t
-_cairo_gl_composite_append_vertex_indices (cairo_gl_context_t	*ctx,
-					   int			 number_of_new_indices)
+_cairo_gl_composite_append_vertex_indices (cairo_gl_context_t *ctx,
+					   int number_of_new_indices)
 {
     cairo_int_status_t status = CAIRO_INT_STATUS_SUCCESS;
     cairo_array_t *indices = &ctx->tristrip_indices;
@@ -1191,21 +1198,25 @@ _cairo_gl_composite_append_vertex_indices (cairo_gl_context_t	*ctx,
 
     assert (number_of_new_indices > 0);
 
-    /* If any preexisting triangle triangle strip indices exist on this
-       context, we insert a set of degenerate triangles from the last
-       preexisting vertex to our first one. */
     if (number_of_indices > 0) {
 	const unsigned short *indices_array = _cairo_array_index_const (indices, 0);
 	current_vertex_index = indices_array[number_of_indices - 1];
 
-	status = _cairo_array_append (indices, &current_vertex_index);
-	if (unlikely (status))
-	    return status;
+	/* If any preexisting triangle triangle strip indices exist on this
+	   context, we insert a set of degenerate triangles from the last
+	   preexisting vertex to our first one. */
+	if (ctx->primitive_type == CAIRO_GL_PRIMITIVE_TYPE_TRISTRIPS) {
+	    status = _cairo_array_append (indices, &current_vertex_index);
+	    if (unlikely (status))
+		return status;
 
-	current_vertex_index++;
-	status =_cairo_array_append (indices, &current_vertex_index);
-	if (unlikely (status))
-	    return status;
+	    current_vertex_index++;
+	    status =_cairo_array_append (indices, &current_vertex_index);
+	    if (unlikely (status))
+		return status;
+	} else {
+	    current_vertex_index++;
+	}
     }
 
     for (i = 0; i < number_of_new_indices; i++) {
@@ -1250,4 +1261,17 @@ _cairo_gl_composite_emit_triangle_as_tristrip (cairo_gl_context_t	*ctx,
     _cairo_gl_composite_emit_point (ctx, &triangle[1]);
     _cairo_gl_composite_emit_point (ctx, &triangle[2]);
     return _cairo_gl_composite_append_vertex_indices (ctx, 3);
+}
+
+cairo_int_status_t
+_cairo_gl_composite_emit_segment (cairo_gl_context_t  *ctx,
+				  const cairo_point_t *p1,
+				  const cairo_point_t *p2)
+{
+    _cairo_gl_composite_prepare_buffer (ctx, 2,
+					CAIRO_GL_PRIMITIVE_TYPE_LINES);
+
+    _cairo_gl_composite_emit_point (ctx, p1);
+    _cairo_gl_composite_emit_point (ctx, p2);
+    return _cairo_gl_composite_append_vertex_indices (ctx, 2);
 }

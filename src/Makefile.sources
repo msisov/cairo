@@ -97,6 +97,7 @@ cairo_private = \
 	cairo-paginated-surface-private.h \
 	cairo-path-fixed-private.h \
 	cairo-path-private.h \
+	cairo-path-stroke-private.h \
 	cairo-pattern-inline.h \
 	cairo-pattern-private.h \
 	cairo-private.h \
@@ -197,6 +198,7 @@ cairo_sources = \
 	cairo-path-stroke-polygon.c \
 	cairo-path-stroke-traps.c \
 	cairo-path-stroke-tristrip.c \
+	cairo-path-stroke-hairline.c \
 	cairo-pattern.c \
 	cairo-pen.c \
 	cairo-polygon.c \

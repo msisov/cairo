@@ -47,6 +47,7 @@
 #include "cairo-gl-private.h"
 #include "cairo-path-private.h"
 #include "cairo-traps-private.h"
+#include "cairo-path-stroke-private.h"
 
 static cairo_bool_t
 can_use_msaa_compositor (cairo_gl_surface_t *surface,
@@ -543,6 +544,15 @@ _stroke_shaper_add_quad (void			*closure,
 						      quad);
 }
 
+static cairo_status_t
+_hairline_shaper_add_segment (void *closure,
+			      const cairo_point_t *p1,
+			      const cairo_point_t *p2)
+{
+    struct _tristrip_composite_info *info = closure;
+    return _cairo_gl_composite_emit_segment (info->ctx, p1, p2);
+}
+
 static cairo_int_status_t
 _prevent_overlapping_strokes (cairo_gl_context_t 		*ctx,
 			      cairo_gl_composite_t 		*setup,
@@ -696,22 +706,33 @@ _cairo_gl_msaa_compositor_stroke (const cairo_compositor_t	*compositor,
     if (unlikely (status))
 	goto finish;
 
+
     status = _prevent_overlapping_strokes (info.ctx, &info.setup,
 					   composite, path, style, ctm);
     if (unlikely (status))
 	goto finish;
 
-    status = _cairo_path_fixed_stroke_to_shaper ((cairo_path_fixed_t *) path,
-						 style,
-						 ctm,
-						 ctm_inverse,
-						 tolerance,
-						 _stroke_shaper_add_triangle,
-						 _stroke_shaper_add_triangle_fan,
-						 _stroke_shaper_add_quad,
-						 &info);
-    if (unlikely (status))
-	goto finish;
+    if (_cairo_path_fixed_stroke_can_use_hairline_shaper (style, ctm)) {
+	status =
+	    _cairo_path_fixed_stroke_to_hairline_shaper (path,
+							 style,
+							 ctm,
+							 ctm_inverse,
+							 tolerance,
+							 _hairline_shaper_add_segment,
+							 &info);
+    } else {
+	status =
+	    _cairo_path_fixed_stroke_to_shaper ((cairo_path_fixed_t *) path,
+						style,
+						ctm,
+						ctm_inverse,
+						tolerance,
+						_stroke_shaper_add_triangle,
+						_stroke_shaper_add_triangle_fan,
+						_stroke_shaper_add_quad,
+						&info);
+    }
 
 finish:
     _cairo_gl_composite_fini (&info.setup);
