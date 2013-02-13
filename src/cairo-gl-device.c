@@ -122,6 +122,12 @@ _gl_destroy (void *device)
 
     ctx->acquire (ctx);
 
+    if(ctx->glyph_mask)
+    {
+    	cairo_surface_destroy(ctx->glyph_mask);
+    	ctx->glyph_mask = NULL;
+    }
+
     while (! cairo_list_is_empty (&ctx->fonts)) {
 	cairo_gl_font_t *font;
 
@@ -284,6 +290,8 @@ _cairo_gl_context_init (cairo_gl_context_t *ctx)
 
     ctx->current_operator = -1;
     ctx->gl_flavor = gl_flavor;
+
+    ctx->glyph_mask = NULL;
 
     status = _cairo_gl_context_init_shaders (ctx);
     if (unlikely (status))
