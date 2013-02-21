@@ -332,7 +332,7 @@ fail:
 
 void
 _cairo_gl_solid_operand_init (cairo_gl_operand_t *operand,
-	                      const cairo_color_t *color)
+			      const cairo_color_t *color)
 {
     operand->type = CAIRO_GL_OPERAND_CONSTANT;
     operand->constant.color[0] = color->red   * color->alpha;
@@ -515,7 +515,8 @@ _cairo_gl_operand_init (cairo_gl_operand_t *operand,
 		        cairo_gl_surface_t *dst,
 			const cairo_rectangle_int_t *sample,
 			const cairo_rectangle_int_t *extents,
-			cairo_bool_t use_texgen)
+			cairo_bool_t use_texgen,
+			cairo_bool_t encode_color_as_attribute)
 {
     cairo_int_status_t status;
 
@@ -524,6 +525,7 @@ _cairo_gl_operand_init (cairo_gl_operand_t *operand,
     case CAIRO_PATTERN_TYPE_SOLID:
 	_cairo_gl_solid_operand_init (operand,
 				      &((cairo_solid_pattern_t *) pattern)->color);
+	operand->constant.encode_as_attribute = encode_color_as_attribute;
 	return CAIRO_STATUS_SUCCESS;
     case CAIRO_PATTERN_TYPE_SURFACE:
 	status = _cairo_gl_surface_operand_init (operand, pattern, dst,
@@ -623,6 +625,8 @@ _cairo_gl_operand_bind_to_shader (cairo_gl_context_t *ctx,
 	return;
 
     case CAIRO_GL_OPERAND_CONSTANT:
+	if (operand->constant.encode_as_attribute)
+	    return;
 	_cairo_gl_shader_bind_vec4 (ctx,
                                     ctx->current_shader->constant_location[tex_unit],
                                     operand->constant.color[0],
@@ -703,6 +707,12 @@ _cairo_gl_operand_needs_setup (cairo_gl_operand_t *dest,
     case CAIRO_GL_OPERAND_NONE:
         return FALSE;
     case CAIRO_GL_OPERAND_CONSTANT:
+	if (dest->constant.encode_as_attribute &&
+	    source->constant.encode_as_attribute)
+	    return FALSE;
+        if (dest->constant.encode_as_attribute !=
+	    source->constant.encode_as_attribute)
+	    return TRUE;
         return dest->constant.color[0] != source->constant.color[0] ||
                dest->constant.color[1] != source->constant.color[1] ||
                dest->constant.color[2] != source->constant.color[2] ||
@@ -735,7 +745,7 @@ _cairo_gl_operand_get_vertex_size (const cairo_gl_operand_t *operand)
         ASSERT_NOT_REACHED;
     case CAIRO_GL_OPERAND_NONE:
     case CAIRO_GL_OPERAND_CONSTANT:
-        return 0;
+        return operand->constant.encode_as_attribute ? 4 * sizeof (GLfloat) : 0;
     case CAIRO_GL_OPERAND_TEXTURE:
         return operand->texture.texgen ? 0 : 2 * sizeof (GLfloat);
     case CAIRO_GL_OPERAND_LINEAR_GRADIENT:
@@ -757,8 +767,16 @@ _cairo_gl_operand_emit (cairo_gl_operand_t *operand,
     case CAIRO_GL_OPERAND_COUNT:
         ASSERT_NOT_REACHED;
     case CAIRO_GL_OPERAND_NONE:
-    case CAIRO_GL_OPERAND_CONSTANT:
-        break;
+	break;
+    case CAIRO_GL_OPERAND_CONSTANT: {
+	if (operand->constant.encode_as_attribute) {
+	    *(*vb)++ = operand->constant.color[0];
+	    *(*vb)++ = operand->constant.color[1];
+	    *(*vb)++ = operand->constant.color[2];
+	    *(*vb)++ = operand->constant.color[3];
+	}
+	break;
+    }
     case CAIRO_GL_OPERAND_LINEAR_GRADIENT:
     case CAIRO_GL_OPERAND_RADIAL_GRADIENT_A0:
     case CAIRO_GL_OPERAND_RADIAL_GRADIENT_NONE:
