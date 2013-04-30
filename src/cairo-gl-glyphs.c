@@ -220,6 +220,66 @@ cairo_gl_context_get_glyph_cache (cairo_gl_context_t *ctx,
 }
 
 static cairo_status_t
+render_glyphs_for_mask (cairo_surface_t *dst,
+			int dst_x, int dst_y,
+			cairo_operator_t op,
+			cairo_surface_t *source,
+			cairo_composite_glyphs_info_t *info,
+			cairo_bool_t *has_component_alpha,
+			cairo_clip_t *clip)
+{
+    cairo_int_status_t status;
+    int i = 0;
+
+    TRACE ((stderr, "%s (%d, %d)x(%d, %d)\n", __FUNCTION__,
+	    info->extents.x, info->extents.y,
+	    info->extents.width, info->extents.height));
+
+     cairo_t *cr = cairo_create (dst);
+
+    for (i = 0; i < info->num_glyphs; i++) {
+	cairo_scaled_glyph_t *scaled_glyph;
+	double x_offset, y_offset;
+	double x1, y1;
+
+	status = _cairo_scaled_glyph_lookup (info->font,
+					     info->glyphs[i].index,
+					     CAIRO_SCALED_GLYPH_INFO_SURFACE,
+					     &scaled_glyph);
+	if (unlikely (status))
+	    goto FINISH;
+
+	if (scaled_glyph->surface->width  == 0 ||
+	    scaled_glyph->surface->height == 0) {
+	    continue;
+	}
+
+	x_offset = scaled_glyph->surface->base.device_transform.x0;
+	y_offset = scaled_glyph->surface->base.device_transform.y0;
+
+	x1 = _cairo_lround (info->glyphs[i].x - x_offset - dst_x);
+	y1 = _cairo_lround (info->glyphs[i].y + y_offset + dst_y);
+
+//	printf("dst: %i %i --", dst_x, dst_y);
+//	printf("offset: %f %f --", x_offset, y_offset);
+//	printf("glyph: %f %f\n", info->glyphs[i].x, info->glyphs[i].y);
+
+	cairo_set_source_rgba(cr, 1, 0, 0, 1);
+	cairo_set_source_rgba(cr, 1, 0, 0, 1);
+	cairo_mask_surface(cr, &scaled_glyph->surface->base, x1, y_offset);
+    }
+//    printf("\n");
+
+    cairo_destroy(cr);
+
+    status = CAIRO_STATUS_SUCCESS;
+
+  FINISH:
+    return status;
+}
+
+
+static cairo_status_t
 render_glyphs (cairo_gl_surface_t *dst,
 	       int dst_x, int dst_y,
 	       cairo_operator_t op,
@@ -361,17 +421,22 @@ render_glyphs_via_mask (cairo_gl_surface_t *dst,
     TRACE ((stderr, "%s\n", __FUNCTION__));
 
     /* XXX: For non-CA, this should be CAIRO_CONTENT_ALPHA to save memory */
-    mask = cairo_gl_surface_create (dst->base.device,
-                                    CAIRO_CONTENT_COLOR_ALPHA,
+    //mask = cairo_gl_surface_create (dst->base.device,
+    //                                CAIRO_CONTENT_COLOR_ALPHA,
+    //                                info->extents.width,
+    //                                info->extents.height);
+
+    mask = cairo_image_surface_create (CAIRO_FORMAT_ARGB32,
                                     info->extents.width,
                                     info->extents.height);
     if (unlikely (mask->status))
         return mask->status;
 
-    status = render_glyphs ((cairo_gl_surface_t *) mask,
+    status = render_glyphs_for_mask (mask,
 			    info->extents.x, info->extents.y,
 			    CAIRO_OPERATOR_ADD, NULL,
 			    info, &has_component_alpha, NULL);
+
     if (likely (status == CAIRO_STATUS_SUCCESS)) {
 	cairo_surface_pattern_t mask_pattern;
 	cairo_surface_pattern_t source_pattern;
@@ -399,7 +464,7 @@ render_glyphs_via_mask (cairo_gl_surface_t *dst,
 
 	status = _cairo_surface_mask (&dst->base, op,
 		                      &source_pattern.base,
-				      &mask_pattern.base,
+		                      &mask_pattern.base,
 				      clip);
 
 	_cairo_clip_destroy (clip);
