@@ -1,0 +1,5 @@
+Name: cairo
+URL: https://cairographics.org/
+Version: 1.14.6
+
+This is a Fuchsia build of the cairo graphics library based off of upstream's 1.14.6 release.
