@@ -36,6 +36,7 @@ group("cairo") {
   public_deps = [
     ":cairo_install_headers",
     ":cairo_lib",
+    ":cairo_shlib",
   ]
 }
 
@@ -247,5 +248,12 @@ source_set("cairo_lib") {
     "//third_party/freetype2",
     "//third_party/libpng",
     "//third_party/pixman",
+  ]
+}
+
+shared_library("cairo_shlib") {
+  output_name = "libcairo"
+  deps = [
+    ":cairo_lib(//build/toolchain/fuchsia:${target_cpu}-shared)",
   ]
 }
