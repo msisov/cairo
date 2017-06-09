@@ -35,7 +35,7 @@ group("cairo") {
   public_configs = [ ":cairo_config" ]
   public_deps = [
     ":cairo_install_headers",
-    ":cairo_lib",
+    ":cairo_lib(//build/toolchain/fuchsia:${target_cpu}-shared)",
   ]
 }
 
@@ -113,8 +113,10 @@ copy("cairo_install_headers") {
   ]
 }
 
-source_set("cairo_lib") {
+shared_library("cairo_lib") {
   visibility = [ ":*" ]
+
+  output_name = "libcairo"
 
   sources = [
     "src/cairo-analysis-surface.c",
@@ -237,6 +239,11 @@ source_set("cairo_lib") {
   ]
 
   configs += [ ":cairo_private_config" ]
+
+# The Cairo library authors are careful to hide private symbols explicitly,
+# so default symbol visiblity is correct and neccesary for this library
+# to work correct.
+  configs -= [ "//build/config:symbol_visibility_hidden" ]
 
   defines = [
     "HAVE_CONFIG_H",
