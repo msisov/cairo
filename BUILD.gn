@@ -26,8 +26,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import("//packages/package.gni")
-
 config("cairo_config") {
   include_dirs = [ "$target_gen_dir" ]
   defines = [ "CAIRO_HAS_FC_FONT=0" ]
@@ -37,7 +35,7 @@ group("cairo") {
   public_configs = [ ":cairo_config" ]
   public_deps = [
     ":cairo_install_headers",
-    ":cairo_lib(//build/toolchain/fuchsia:${target_cpu}-shared)",
+    ":cairo_lib",
   ]
 }
 
@@ -115,10 +113,8 @@ copy("cairo_install_headers") {
   ]
 }
 
-shared_library("cairo_lib") {
+source_set("cairo_lib") {
   visibility = [ ":*" ]
-
-  output_name = "libcairo"
 
   sources = [
     "src/cairo-analysis-surface.c",
@@ -242,11 +238,6 @@ shared_library("cairo_lib") {
 
   configs += [ ":cairo_private_config" ]
 
-  # The Cairo library authors are careful to hide private symbols explicitly,
-  # so default symbol visiblity is correct and neccesary for this library
-  # to work correct.
-  configs -= [ "//build/config:symbol_visibility_hidden" ]
-
   defines = [
     "HAVE_CONFIG_H",
     "_REENTRANT",
@@ -257,16 +248,4 @@ shared_library("cairo_lib") {
     "//third_party/libpng",
     "//third_party/pixman",
   ]
-}
-
-package("package") {
-  package_name = "cairo"
-
-  deps = [
-    ":cairo_lib"
-  ]
-
-  libraries = [ {
-        name = "libcairo.so"
-      } ]
 }
