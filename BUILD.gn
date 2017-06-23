@@ -26,6 +26,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import("//build/toolchain/shared.gni")
 import("//packages/package.gni")
 
 config("cairo_config") {
@@ -37,7 +38,7 @@ group("cairo") {
   public_configs = [ ":cairo_config" ]
   public_deps = [
     ":cairo_install_headers",
-    ":cairo_lib(//build/toolchain/fuchsia:${target_cpu}-shared)",
+    ":cairo_lib($shared_toolchain)",
   ]
 }
 
@@ -118,7 +119,7 @@ copy("cairo_install_headers") {
 shared_library("cairo_lib") {
   visibility = [ ":*" ]
 
-  output_name = "libcairo"
+  output_name = "cairo"
 
   sources = [
     "src/cairo-analysis-surface.c",
@@ -263,7 +264,7 @@ package("package") {
   package_name = "cairo"
 
   deps = [
-    ":cairo_lib"
+    ":cairo"
   ]
 
   libraries = [ {
