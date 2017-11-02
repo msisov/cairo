@@ -251,6 +251,8 @@ shared_library("cairo") {
 }
 
 package("package") {
+  system_image = true
+
   package_name = "cairo"
 
   deps = [
