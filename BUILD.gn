@@ -26,8 +26,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import("//packages/package.gni")
-
 config("cairo_config") {
   include_dirs = [ "$target_gen_dir" ]
   defines = [ "CAIRO_HAS_FC_FONT=0" ]
@@ -248,18 +246,4 @@ shared_library("cairo") {
 
   public_configs = [ ":cairo_config" ]
   public_deps = [ ":cairo_install_headers" ]
-}
-
-package("package") {
-  system_image = true
-
-  package_name = "cairo"
-
-  deps = [
-    ":cairo"
-  ]
-
-  libraries = [ {
-        name = "libcairo.so"
-      } ]
 }
